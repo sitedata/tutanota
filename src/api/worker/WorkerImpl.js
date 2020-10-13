@@ -23,6 +23,9 @@ import type {ContactFormAccountReturn} from "../entities/tutanota/ContactFormAcc
 import type {PaymentDataServicePutReturn} from "../entities/sys/PaymentDataServicePutReturn"
 import type {EntityUpdate} from "../entities/sys/EntityUpdate"
 import type {WebsocketCounterData} from "../entities/sys/WebsocketCounterData"
+import type {WebsocketLeaderStatus} from "../entities/sys/WebsocketLeaderStatus"
+import {createWebsocketLeaderStatus} from "../entities/sys/WebsocketLeaderStatus"
+import stream from "mithril/stream/stream.js"
 
 assertWorkerOrNode()
 
@@ -35,6 +38,7 @@ export class WorkerImpl {
 	_queue: Queue;
 	_newEntropy: number;
 	_lastEntropyUpdate: number;
+	_leaderStatus: Stream<WebsocketLeaderStatus>; // needed here for entropy updates
 
 	constructor(self: ?DedicatedWorkerGlobalScope, browserData: BrowserData) {
 		if (browserData == null) {
@@ -45,6 +49,7 @@ export class WorkerImpl {
 		nativeApp.setWorkerQueue(this._queue)
 		this._newEntropy = -1
 		this._lastEntropyUpdate = new Date().getTime()
+		this._leaderStatus = stream(createWebsocketLeaderStatus())
 
 		initLocator(this, browserData);
 
@@ -420,8 +425,17 @@ export class WorkerImpl {
 		return this._queue.postMessage(new Request("counterUpdate", [update]))
 	}
 
+	setLeaderStatus(status: WebsocketLeaderStatus): Promise<void> {
+		this._leaderStatus(status)
+		return this._queue.postMessage(new Request("leaderStatus", [status]))
+	}
+
 	infoMessage(message: InfoMessage) {
 		return this._queue.postMessage(new Request("infoMessage", [message]))
+	}
+
+	isLeader(): boolean {
+		return this._leaderStatus().leaderStatus
 	}
 }
 

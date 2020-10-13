@@ -61,6 +61,7 @@ export class MailModel {
 	_notifications: Notifications
 	_eventController: EventController
 	_worker: WorkerClient
+	_leaderStatus: Stream<boolean>
 
 	constructor(notifications: Notifications, eventController: EventController, worker: WorkerClient) {
 		this.mailboxDetails = stream()
@@ -69,6 +70,7 @@ export class MailModel {
 		this._notifications = notifications
 		this._eventController = eventController
 		this._worker = worker
+		this._leaderStatus = this._worker.leaderStatus()
 	}
 
 	init(): Promise<void> {
@@ -283,7 +285,11 @@ export class MailModel {
 					const mailId = [update.instanceListId, update.instanceId]
 					return load(MailTypeRef, mailId)
 						.then((mail) => this.getMailboxDetailsForMailListId(update.instanceListId)
-						                    .then(mailboxDetail => findAndApplyMatchingRule(mailboxDetail, mail))
+						                    .then(mailboxDetail => {
+							                    // We only apply rules on server if we are the leader in case of incoming messages
+							                    // TODO: Notification link will not work properly if the mail is no longer or not yet in the returned folder...
+							                    return findAndApplyMatchingRule(mailboxDetail, mail, this._leaderStatus())
+						                    })
 						                    .then((newId) => this._showNotification(newId || mailId)))
 						.catch(noOp)
 				}

@@ -115,6 +115,7 @@ export class LoginFacade {
 		this._restClient = restClient
 		this._entity = entity
 		this.reset()
+
 	}
 
 	init(indexer: Indexer, eventBusClient: EventBusClient) {
@@ -543,7 +544,8 @@ export class LoginFacade {
 	}
 
 	storeEntropy(): Promise<void> {
-		if (!this._accessToken) return Promise.resolve()
+		// We only store entropy to the server if we are the leader
+		if (!this._accessToken || !this._worker.isLeader()) return Promise.resolve()
 		return this._entity.loadRoot(TutanotaPropertiesTypeRef, this.getUserGroupId()).then(tutanotaProperties => {
 			tutanotaProperties.groupEncEntropy = encryptBytes(this.getUserGroupKey(), random.generateRandomData(32))
 			return update(tutanotaProperties)
@@ -677,7 +679,7 @@ export class LoginFacade {
 		const eventRestClient = new EntityRestClient(() => ({}), this._restClient)
 
 		return serviceRequest(SysService.SessionService, HttpMethod.POST, sessionData, CreateSessionReturnTypeRef)
-		// Don't pass email address to avoid proposing to reset second factor when we're resetting password
+			// Don't pass email address to avoid proposing to reset second factor when we're resetting password
 			.then(createSessionReturn => this._waitUntilSecondFactorApprovedOrCancelled(createSessionReturn, null))
 			.then(sessionData => {
 				return _loadEntity(UserTypeRef, sessionData.userId, null, eventRestClient, {accessToken: sessionData.accessToken})

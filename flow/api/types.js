@@ -148,6 +148,7 @@ type MainRequestType = 'execNative'
 	| 'updateWebSocketState'
 	| 'updateEntityEventProgress'
 	| 'counterUpdate'
+	| 'leaderStatus'
 	| 'infoMessage'
 
 type NativeRequestType = 'init'

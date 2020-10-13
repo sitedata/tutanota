@@ -29,6 +29,7 @@ import {_TypeModel as PhishingMarkerWebsocketDataTypeModel} from "../entities/tu
 import type {EntityUpdate} from "../entities/sys/EntityUpdate"
 import type {EntityRestInterface} from "./rest/EntityRestClient"
 import {EntityClient} from "../common/EntityClient"
+import {_TypeModel as WebsocketLeaderStatusTypeModel} from "../entities/sys/WebsocketLeaderStatus"
 
 assertWorkerOrNode()
 
@@ -277,6 +278,13 @@ export class EventBusClient {
 					this._lastAntiphishingMarkersId = data.lastId
 					this._mail.phishingMarkersUpdateReceived(data.markers)
 				})
+		} else if (type === "leaderStatus") {
+			return decryptAndMapToInstance(WebsocketLeaderStatusTypeModel, JSON.parse(value), null)
+				.then(status => {
+					console.log("New leader status set:", status.leaderStatus)
+					this._worker.setLeaderStatus(status)
+				})
+
 		} else {
 			console.log("ws message with unknown type", type)
 		}
