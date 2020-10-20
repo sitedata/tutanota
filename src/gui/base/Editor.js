@@ -253,8 +253,16 @@ export class Editor implements ImageHandler {
 		return this._squire.insertImage(srcAttr, attrs)
 	}
 
+	insertHTML(html: string){
+		this._squire.insertHTML(html)
+	}
+
 	getDOM(): HTMLElement {
 		return this._squire.getRoot()
+	}
+	
+	getCursorPosition(): ClientRect {
+		return this._squire.getCursorPosition();
 	}
 
 	focus(): void {
@@ -271,5 +279,9 @@ export class Editor implements ImageHandler {
 		const range = document.createRange()
 		range.selectNode(this._squire.getRoot())
 		this._squire.removeAllFormatting(range)
+	}
+
+	undo() {
+		this._squire.undo()
 	}
 }

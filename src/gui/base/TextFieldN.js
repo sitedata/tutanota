@@ -27,6 +27,7 @@ export type TextFieldAttrs = {
 	disabled?: boolean,
 	oninput?: (value: string, input: HTMLInputElement) => mixed,
 	onclick?: clickHandler,
+	focusOnCreate?: boolean,
 }
 
 export const Type = Object.freeze({
@@ -52,6 +53,7 @@ export class _TextField {
 	_domLabel: HTMLElement;
 	_domInput: HTMLInputElement;
 	_domInputWrapper: HTMLElement;
+	dom: HTMLElement;
 
 	constructor(vnode: Vnode<TextFieldAttrs>) {
 		this.active = false
@@ -135,6 +137,9 @@ export class _TextField {
 					"aria-label": lang.getMaybeLazy(a.label),
 					oncreate: (vnode) => {
 						this._domInput = vnode.dom
+						if (a.focusOnCreate) {
+							this._domInput.focus()
+						}
 						this._domInput.style.opacity = this._shouldShowPasswordOverlay(a) ? "0" : "1"
 						this._domInput.value = a.value()
 						if (a.type === Type.ExternalPassword) {

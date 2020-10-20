@@ -66,7 +66,7 @@ import {
 } from "./MailUtils"
 import {ContactEditor} from "../contacts/ContactEditor"
 import ColumnEmptyMessageBox from "../gui/base/ColumnEmptyMessageBox"
-import type {KeyPress} from "../misc/KeyManager"
+import type {KeyPress, Shortcut} from "../misc/KeyManager"
 import {keyManager} from "../misc/KeyManager"
 import * as AddInboxRuleDialog from "../settings/AddInboxRuleDialog"
 import {createInboxRuleTemplate} from "../settings/AddInboxRuleDialog"
@@ -102,7 +102,7 @@ import {ButtonColors, ButtonN, ButtonType} from "../gui/base/ButtonN"
 import {styles} from "../gui/styles"
 import {worker} from "../api/main/WorkerClient"
 import {CALENDAR_MIME_TYPE} from "../calendar/CalendarUtils"
-import {createAsyncDropdown, createDropdown} from "../gui/base/DropdownN"
+import {createAsyncDropdown, createDropdown, DropdownN, showDropdown} from "../gui/base/DropdownN"
 import {navButtonRoutes} from "../misc/RouteChange"
 import {createEmailSenderListElement} from "../api/entities/sys/EmailSenderListElement"
 import {isNewMailActionAvailable} from "./MailView"
@@ -123,6 +123,8 @@ import {newMailEditorAsResponse, newMailEditorFromDraft, newMailtoUrlMailEditor}
 import type {MailboxDetail} from "./MailModel"
 import type {ResponseMailParameters} from "./SendMailModel"
 import {defaultSendMailModel} from "./SendMailModel"
+import {modal} from "../gui/base/Modal"
+import {AutocompletePopup} from "./AutocompletePopup"
 
 assertMainOrNode()
 
@@ -338,6 +340,11 @@ export class MailViewer {
 								onclick: (event: MouseEvent) => {
 									if (!client.isMobileDevice()) {
 										this._handleAnchorClick(event, false)
+									}
+								},
+								ondblclick: (event: MouseEvent) => {
+									if (!client.isMobileDevice()) {
+										this._onEventSelected(event)
 									}
 								},
 							},
@@ -1361,6 +1368,23 @@ export class MailViewer {
 				return getDefaultSender(logins, mailboxDetails)
 			}
 		})
+	}
+
+	// left: number;
+	// width: number;
+	// right: number;
+	// top: number;
+	// bottom: number;
+	// height: number;
+
+
+ 	_onEventSelected(event: MouseEvent) {
+	// 	const tempWidth = event.clientX + 20
+	// 	const tempHeight = event.clientY + 10
+	// 	const tempOrigin = new DomRectReadOnlyPolyfilled(event.clientX, event.clientY, tempWidth, tempHeight)
+	// 	const dropdown = new AutocompletePopup(tempOrigin).show()
+	// 	console.log(dropdown)
+	// 	// modal.displayUnique(dropdown)
 	}
 
 	_handleAnchorClick(event: Event, shouldDispatchSyntheticClick: boolean): void {
