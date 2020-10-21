@@ -1064,6 +1064,7 @@ module.exports = {
 		"templateHelp_msg": "In the form below you can configure a custom template for the notification emails containing the link to the encrypted mailbox. The template body must contain a \"{link}\" placeholder which will be replaced with the actual link to the encrypted email. You can also include a \"{sender}\" placeholder in the mail body or in the subject which will be replaced with the sender name.",
 		"templateLanguageExists_msg": "Template for the selected language already exists.",
 		"templateMustContain_msg": "Template must contain placeholder {value}",
+		"templateOpen_label" : "Show template feature",
 		"termsAcceptedNeutral_msg": "Please accept the terms & conditions.",
 		"termsAndConditionsLink_label": "General terms and conditions",
 		"termsAndConditions_label": "I have read and agree to the following documents:",

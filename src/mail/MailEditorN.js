@@ -246,6 +246,14 @@ export class MailEditorN implements MComponent<MailEditorAttrs> {
 			})
 			: null
 
+		const templateButtonAttrs = {
+			label: "templateOpen_label",
+			click: () => openTemplateFeature(this.editor),
+			icon: () => Icons.ListAlt,
+			noRecipientInfoBubble: true
+		}
+
+
 		const subjectFieldAttrs: TextFieldAttrs = {
 			label: "subject_label",
 			helpLabel: () => lang.get(model.getConfidentialStateTranslationKey()),
@@ -254,7 +262,7 @@ export class MailEditorN implements MComponent<MailEditorAttrs> {
 			injectionsRight: () => {
 				return showConfidentialButton
 					? [m(ButtonN, confidentialButtonAttrs), m(ButtonN, attachFilesButtonAttrs), toolbarButton()]
-					: [m(ButtonN, attachFilesButtonAttrs), toolbarButton()]
+					: [m(ButtonN, templateButtonAttrs), m(ButtonN, attachFilesButtonAttrs), toolbarButton()]
 			}
 
 		}
@@ -504,7 +512,7 @@ function createMailEditorDialog(model: SendMailModel, blockExternalContent: bool
 				               key: Keys.SPACE,
 				               shift: true,
 				               exec: () => openTemplateFeature(mailEditorAttrs._editor),
-				               help: "send_action" // TODO: Add TranslationKey
+				               help: "templateOpen_label"
 	               }).setCloseHandler(() => closeButtonAttrs.click(newMouseEvent(), domCloseButton))
 
 	if (model.getConversationType() === ConversationType.REPLY || model.toRecipients().length) {
@@ -517,14 +525,15 @@ function createMailEditorDialog(model: SendMailModel, blockExternalContent: bool
 
 function openTemplateFeature(editor: ?Editor) {
 	const _editor = assertNotNull(editor)
-	const rect = _editor.getCursorPosition()
+	const cursorRect = _editor.getCursorPosition()
+	const editorRect = _editor.getDOM().getBoundingClientRect();
 	const onsubmit = (text) => {
 		_editor.insertHTML(text)
 		console.log(_editor.getHTML())
 		_editor.focus()
 	}
 
-	const rectNew = new DomRectReadOnlyPolyfilled(rect.left + 5, rect.top + 15, rect.width, rect.height);
+	const rectNew = new DomRectReadOnlyPolyfilled(editorRect.left, cursorRect.top + 15, cursorRect.width, cursorRect.height);
 	const dropdown = new AutocompletePopup(rectNew, onsubmit).show()
 	console.log(dropdown)
 }
