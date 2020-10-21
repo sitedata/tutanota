@@ -238,6 +238,9 @@ export class _TextField {
 					this._domInput.style.height = '0px'
 					this._domInput.style.height = px(this._domInput.scrollHeight)
 					a.value(this._domInput.value) // update the input on each change
+					if(a.oninput){
+						a.oninput(this._domInput.value, this._domInput)
+					}
 				},
 				onupdate: () => {
 					if (this._domInput.value !== a.value()) { // only change the value if the value has changed otherwise the cursor in Safari and in the iOS App cannot be positioned.
