@@ -55,8 +55,10 @@ import type {Mail} from "../api/entities/tutanota/Mail"
 import type {File as TutanotaFile} from "../api/entities/tutanota/File"
 import type {InlineImages} from "./MailViewer"
 import {FileOpenError} from "../api/common/error/FileOpenError"
-import {downcast, neverNull} from "../api/common/utils/Utils"
+import {assertNotNull, downcast, neverNull} from "../api/common/utils/Utils"
 import {showUpgradeWizard} from "../subscription/UpgradeSubscriptionWizard"
+import {DomRectReadOnlyPolyfilled} from "../gui/base/Dropdown"
+import {AutocompletePopup} from "./AutocompletePopup"
 
 export type MailEditorAttrs = {
 	model: SendMailModel,
@@ -69,7 +71,8 @@ export type MailEditorAttrs = {
 	selectedNotificationLanguage: Stream<string>,
 	inlineImages?: Promise<InlineImages>,
 	_focusEditorOnLoad: () => void,
-	_onSend: () => void
+	_onSend: () => void,
+	_editor: ?Editor
 }
 
 export function createMailEditorAttrs(model: SendMailModel, doBlockExternalContent: boolean, doFocusEditorOnLoad: boolean, inlineImages?: Promise<InlineImages>): MailEditorAttrs {
@@ -82,7 +85,8 @@ export function createMailEditorAttrs(model: SendMailModel, doBlockExternalConte
 		selectedNotificationLanguage: stream(""),
 		inlineImages: inlineImages,
 		_focusEditorOnLoad: () => {},
-		_onSend: () => {}
+		_onSend: () => {},
+		_editor: null
 	}
 }
 
@@ -134,6 +138,8 @@ export class MailEditorN implements MComponent<MailEditorAttrs> {
 			// since the editor is the source for the body text, the model won't know if the body has changed unless we tell it
 			this.editor.addChangeListener(() => model.setBody(replaceInlineImagesWithCids(this.editor.getDOM()).innerHTML))
 		})
+
+		a._editor = this.editor
 
 		const insertImageHandler = isApp()
 			? null
@@ -298,6 +304,8 @@ export class MailEditorN implements MComponent<MailEditorAttrs> {
 		}
 
 
+
+
 		return m("#mail-editor.full-height.text.touch-callout", {
 			onremove: vnode => {
 				model.dispose()
@@ -445,6 +453,8 @@ function createMailEditorDialog(model: SendMailModel, blockExternalContent: bool
 		}
 	}
 
+
+
 	mailEditorAttrs = createMailEditorAttrs(model, blockExternalContent, model.toRecipients().length !== 0, inlineImages);
 
 	dialog = Dialog.largeDialogN(headerBarAttrs, MailEditorN, mailEditorAttrs)
@@ -489,6 +499,12 @@ function createMailEditorDialog(model: SendMailModel, blockExternalContent: bool
 		               shift: true,
 		               exec: send,
 		               help: "send_action"
+	               })
+	               .addShortcut({
+				               key: Keys.SPACE,
+				               shift: true,
+				               exec: () => openTemplateFeature(mailEditorAttrs._editor),
+				               help: "send_action" // TODO: Add TranslationKey
 	               }).setCloseHandler(() => closeButtonAttrs.click(newMouseEvent(), domCloseButton))
 
 	if (model.getConversationType() === ConversationType.REPLY || model.toRecipients().length) {
@@ -498,6 +514,20 @@ function createMailEditorDialog(model: SendMailModel, blockExternalContent: bool
 	return dialog
 }
 
+
+function openTemplateFeature(editor: ?Editor) {
+	const _editor = assertNotNull(editor)
+	const rect = _editor.getCursorPosition()
+	const onsubmit = (text) => {
+		_editor.insertHTML(text)
+		console.log(_editor.getHTML())
+		_editor.focus()
+	}
+
+	const rectNew = new DomRectReadOnlyPolyfilled(rect.left + 5, rect.top + 15, rect.width, rect.height);
+	const dropdown = new AutocompletePopup(rectNew, onsubmit).show()
+	console.log(dropdown)
+}
 
 /**
  * open a MailEditor
