@@ -174,7 +174,7 @@ class DeviceConfig {
 		this._store()
 	}
 
-	getTemplateArray() {
+	getTemplateArray(): ListObject[] {
 		return this._templateArray
 	}
 

@@ -528,7 +528,8 @@ function openTemplateFeature(editor: ?Editor) {
 	const cursorRect = _editor.getCursorPosition()
 	const editorRect = _editor.getDOM().getBoundingClientRect();
 	const onsubmit = (text) => {
-		_editor.insertHTML(text)
+		const result = text.replace(/\n/g, "<br />")
+		_editor.insertHTML(result)
 		console.log(_editor.getHTML())
 		_editor.focus()
 	}

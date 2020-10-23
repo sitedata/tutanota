@@ -1187,6 +1187,18 @@ module.exports = {
 		"noUpdateAvailable_msg": "No Update found.",
 		"installNow_action": "Install now.",
 		"checkingForUpdate_action": "Checking for Update…",
-		"resetZoomFactor_action": "Reset Zoom Factor"
+		"resetZoomFactor_action": "Reset Zoom Factor",
+			"template_label": "Template",
+			"templateEdit_label": "Edit Template",
+			"templateMain_label": "Template",
+			"addTemplate_label": "Add Template",
+			"templateFilter_label": "Filter Templates",
+			"templateExpander_label": "Show Templates",
+			"templateTitle_label": "Template",
+			"templateID_label": "ID",
+			"templateTable_title": "Template",
+			"templateTable_id": "ID",
+			"templateSubmit_label": "Submit Template",
+			"templateTable_content": "Content",
 	}
 }
