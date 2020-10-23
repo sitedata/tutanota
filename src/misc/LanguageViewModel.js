@@ -79,9 +79,12 @@ const infoLinks = {
 	"phishing_link": "https://tutanota.com/faq#phishing",
 	"mailAuth_link": "https://tutanota.com/faq#mail-auth",
 	"runInBackground_link": "https://tutanota.com/faq#tray",
+	"loadImages_link": "https://tutanota.com/faq#load-images",
 	//blog
 	"premiumProBusiness_link": "https://tutanota.com/blog/posts/premium-pro-business"
 }
+
+export type InfoLink = $Keys<typeof infoLinks>
 
 /**
  * Provides all localizations of strings on our gui.
@@ -135,11 +138,11 @@ export class LanguageViewModel {
 
 		const language = getLanguage()
 		return this.setLanguage(language)
-		           // Service worker currently caches only English. We don't want the whole app to fail if we cannot fetch the language.
-		           .catch((e) => {
-			           console.warn("Could not set language", language, e)
-			           this._setLanguageTag("en-US")
-		           })
+			// Service worker currently caches only English. We don't want the whole app to fail if we cannot fetch the language.
+			       .catch((e) => {
+				       console.warn("Could not set language", language, e)
+				       this._setLanguageTag("en-US")
+			       })
 	}
 
 	addStaticTranslation(key: string, text: string) {
@@ -319,7 +322,6 @@ export class LanguageViewModel {
 	getInfoLink(id: string): string {
 		return infoLinks[id]
 	}
-
 }
 
 /**

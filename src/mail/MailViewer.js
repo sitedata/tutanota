@@ -6,6 +6,7 @@ import {ExpanderButton, ExpanderPanel} from "../gui/base/Expander"
 import {ExpanderButtonN, ExpanderPanelN} from "../gui/base/ExpanderN"
 import {load, serviceRequestVoid, update} from "../api/main/Entity"
 import {Button, createAsyncDropDownButton, createDropDownButton} from "../gui/base/Button"
+import type {BannerAttrs} from "../gui/base/Banner"
 import {formatDateTime, formatDateWithWeekday, formatStorageSize, formatTime, urlEncodeHtmlTags} from "../misc/Formatter"
 import {windowFacade} from "../misc/WindowFacade"
 import {ease} from "../gui/animation/Easing"
@@ -97,7 +98,7 @@ import {showProgressDialog} from "../gui/base/ProgressDialog"
 import Badge from "../gui/base/Badge"
 import {FileOpenError} from "../api/common/error/FileOpenError"
 import type {DialogHeaderBarAttrs} from "../gui/base/DialogHeaderBar"
-import type {ButtonAttrs} from "../gui/base/ButtonN"
+import type {ButtonAttrs, ButtonColorEnum} from "../gui/base/ButtonN"
 import {ButtonColors, ButtonN, ButtonType} from "../gui/base/ButtonN"
 import {styles} from "../gui/styles"
 import {worker} from "../api/main/WorkerClient"
@@ -137,14 +138,13 @@ type MaybeSyntheticEvent = TouchEvent & {synthetic?: boolean}
 const DOUBLE_TAP_TIME_MS = 350
 const SCROLL_FACTOR = 4 / 5
 
-// TODO: it does not handle all edge cases (e.g. allowing in email with no external content shows banner)
-export const ContentBlockingPolicy = Object.freeze({
+export const ContentBlockingStatus = Object.freeze({
 	Block: "0",
 	Show: "1",
 	AlwaysShow: "2",
 	NoExternalContent: "3"
 })
-export type ContentBlockingPolicyEnum = $Values<typeof ContentBlockingPolicy>;
+export type ExternalContentBlockingStatusEnum = $Values<typeof ContentBlockingStatus>;
 
 /**
  * The MailViewer displays a mail. The mail body is loaded asynchronously.
@@ -158,7 +158,8 @@ export class MailViewer {
 	_loadingAttachments: boolean;
 	_attachments: TutanotaFile[];
 	_attachmentButtons: Button[];
-	_contentBlockingPolicy: ContentBlockingPolicyEnum;
+	_contentBlockingStatus: ExternalContentBlockingStatusEnum;
+	_showContentBlockingBanner: boolean;
 	_domMailViewer: ?HTMLElement;
 	_bodyLineHeight: number;
 	_errorOccurred: boolean;
@@ -203,7 +204,8 @@ export class MailViewer {
 		this._attachmentButtons = []
 		this._htmlBody = ""
 		this._contrastFixNeeded = false
-		this._contentBlockingPolicy = ContentBlockingPolicy.Block
+		this._contentBlockingStatus = ContentBlockingStatus.Block
+		this._showContentBlockingBanner = true
 		this._bodyLineHeight = size.line_height
 		this._errorOccurred = false
 		this._domMailViewer = null
@@ -296,33 +298,33 @@ export class MailViewer {
 							this._suspicious
 								? m(Banner, {
 									type: BannerType.Warning,
-									title: lang.get("phishingMessage_label"),
-									message: lang.get("phishingMessageBody_msg"),
+									title: "phishingMessage_label",
+									message: "phishingMessageBody_msg",
 									icon: Icons.Warning,
-									helpLink: lang.getInfoLink("phishing_link"),
-									buttons: [{text: lang.get("markAsNotPhishing_action"), click: () => this._markAsNotPhishing()}]
+									helpLink: "phishing_link",
+									buttons: [{text: "markAsNotPhishing_action", click: () => this._markAsNotPhishing()}]
 								})
 								: !this._warningDismissed && mail.authStatus === MailAuthenticationStatus.HARD_FAIL
 								? m(Banner, {
 									type: BannerType.Warning,
-									title: lang.get("mailAuthFailed_label"),
-									message: lang.get("mailAuthFailed_msg"),
+									title: "mailAuthFailed_label",
+									message: "mailAuthFailed_msg",
 									icon: Icons.Warning,
-									helpLink: lang.getInfoLink("mailAuth_link"),
-									buttons: [{text: lang.get("close_alt"), click: () => this._warningDismissed = true}]
+									helpLink: "mailAuth_link",
+									buttons: [{text: "close_alt", click: () => this._warningDismissed = true}]
 								})
 								: !this._warningDismissed && mail.authStatus === MailAuthenticationStatus.SOFT_FAIL
 									? m(Banner, {
 										type: BannerType.Info,
-										title: lang.get("mailAuthMissing_label"),
-										message: mail.differentEnvelopeSender ? lang.get("technicalSender_msg", {"{sender}": mail.differentEnvelopeSender}) : "",
+										title: "mailAuthMissing_label",
+										message: () => mail.differentEnvelopeSender ? lang.get("technicalSender_msg", {"{sender}": mail.differentEnvelopeSender}) : "",
 										icon: Icons.Warning,
-										helpLink: lang.getInfoLink("mailAuth_link"),
-										buttons: [{text: lang.get("close_alt"), click: () => this._warningDismissed = true}]
+										helpLink: "mailAuth_link",
+										buttons: [{text: "close_alt", click: () => this._warningDismissed = true}]
 									})
 									: null,
 							this._renderEventBanner(),
-							this._renderExternalImageBanner(),
+							this._renderExternalContentBanner(),
 							this._renderAttachments(),
 							m("hr.hr.mb.mt-s"),
 						]),
@@ -673,20 +675,18 @@ export class MailViewer {
 							type: ButtonType.Dropdown
 						})
 					}
-					if (this._contentBlockingPolicy === ContentBlockingPolicy.AlwaysShow) {
-						// TODO: translate
+					if (this._contentBlockingStatus === ContentBlockingStatus.AlwaysShow) {
 						moreButtons.push({
-							label: () => "Disallow External Content",
+							label: "disallowExternalContent_label",
 							click: () => {
-								worker.removeAllowedExternalSender(mail.sender.address)
-								this._contentBlockingPolicy = ContentBlockingPolicy.Show
+								this._setContentBlockingStatus(ContentBlockingStatus.Show)
 							},
 							icon: () => Icons.Picture,
 							type: ButtonType.Dropdown
 						})
 					}
 					return moreButtons
-				}, /*width=*/300)
+				}, 300)
 			}))
 		}
 
@@ -852,11 +852,11 @@ export class MailViewer {
 			)
 			this._htmlBody = urlify(stringifyFragment(sanitizeResult.html))
 
-			this._contentBlockingPolicy = isAllowedExternalSender
-				? ContentBlockingPolicy.AlwaysShow
+			this._contentBlockingStatus = isAllowedExternalSender
+				? ContentBlockingStatus.AlwaysShow
 				: sanitizeResult.externalContent.length > 0
-					? ContentBlockingPolicy.Block
-					: ContentBlockingPolicy.NoExternalContent
+					? ContentBlockingStatus.Block
+					: ContentBlockingStatus.NoExternalContent
 
 			m.redraw()
 			return sanitizeResult.inlineImageCids
@@ -1189,7 +1189,8 @@ export class MailViewer {
 			if (sendAllowed) {
 				return locator.mailModel.getMailboxDetailsForMail(this.mail)
 				              .then((mailboxDetails) => {
-					              newMailEditorFromDraft(this.mail, this._attachments, this._getMailBody(), this._contentBlockingPolicy === ContentBlockingPolicy.Block, this._inlineImages, mailboxDetails)
+					              newMailEditorFromDraft(this.mail, this._attachments, this._getMailBody(), this._contentBlockingStatus
+						              === ContentBlockingStatus.Block, this._inlineImages, mailboxDetails)
 						              .then(editorDialog => editorDialog.show())
 				              })
 			}
@@ -1248,7 +1249,7 @@ export class MailViewer {
 							subject,
 							bodyText: bodyTextWithSignature(body),
 							replyTos: [],
-						}, this._contentBlocked, this._inlineImages, mailboxDetails)
+						}, this._contentBlockingStatus === ContentBlockingStatus.Block, this._inlineImages, mailboxDetails)
 					}).then(editor => {
 						editor.show()
 					})
@@ -1270,7 +1271,8 @@ export class MailViewer {
 			if (sendAllowed) {
 				return this._createResponseMailArgsForForwarding([], [], true).then(args => {
 					return this._getMailboxDetails().then(mailboxDetails => {
-						newMailEditorAsResponse(args, this._contentBlocked, this._inlineImages, mailboxDetails)
+						newMailEditorAsResponse(args, this._contentBlockingStatus
+							=== ContentBlockingStatus.Block, this._inlineImages, mailboxDetails)
 							.then(editor => editor.show())
 					})
 				})
@@ -1527,38 +1529,100 @@ export class MailViewer {
 		this._lastBodyTouchEndTime = now
 	}
 
-	_renderExternalImageBanner(): Children {
-		if (this._mailBody == null) return null
+	_renderExternalContentBanner(): Children {
+		if (!this._showContentBlockingBanner || this._mailBody == null) return null
 
-		// TODO: translate
-		return this._contentBlockingPolicy === ContentBlockingPolicy.Block
-			? m(Banner, {
-				type: BannerType.Info,
-				title: "External content blocked",
-				message: "",
-				icon: Icons.Picture,
-				helpLink: "https://tutanota.com/faq/#load-images",
-				buttonText: "Load content",
-				buttonClick: () => {
-					this._htmlBody = urlify(stringifyFragment(htmlSanitizer.sanitizeFragment(this._getMailBody(), false, isTutanotaTeamMail(this.mail)).html))
-					this._contentBlockingPolicy = ContentBlockingPolicy.Show
-					this._domBodyDeferred = defer()
-					this._replaceInlineImages()
+		const status = this._contentBlockingStatus
+
+		let title, okLabel, okAction
+
+		if (status === ContentBlockingStatus.Block) {
+			title = "contentBlocked_msg"
+			okLabel = "allowExternalContent_label"
+			okAction = () => {
+				this._setContentBlockingStatus(ContentBlockingStatus.Show)
+			}
+		} else if (status === ContentBlockingStatus.Show) {
+			title = "contentAllowed_msg"
+			okLabel = "alwaysAllowExternalContent_label"
+			okAction = () => {
+				this._setContentBlockingStatus(ContentBlockingStatus.AlwaysShow)
+			}
+		} else {
+			return null
+		}
+
+		const bannerAttrs: BannerAttrs = {
+			type: BannerType.Info,
+			title,
+			message: "emptyString_msg",
+			icon: Icons.Picture,
+			helpLink: "loadImages_link",
+			buttons: [
+				{
+					text: okLabel,
+					click: okAction
 				},
-			})
-			: this._contentBlockingPolicy === ContentBlockingPolicy.Show
-				? m(Banner, {
-					type: BannerType.Info,
-					title: "Showing external content",
-					message: "",
-					icon: Icons.Picture,
-					helpLink: "https://tutanota.com/faq/#load-images",
-					buttonText: "Always show external content from this sender",
-					buttonClick: () => {
-						this._contentBlockingPolicy = ContentBlockingPolicy.AlwaysShow
-						worker.addAllowedExternalSender(this.mail.sender.address)
-					},
-				})
-				: null
+				{
+					text: "ignore_label",
+					click: () => this._showContentBlockingBanner = false
+				}
+			]
+		}
+		return m(Banner, bannerAttrs)
+	}
+
+	_renderExternalContentButtons(mail: Mail, colors: ButtonColorEnum): Children {
+		const status = this._contentBlockingStatus
+
+		let message, okLabel, okAction
+
+		if (status === ContentBlockingStatus.Block) {
+			message = "contentBlocked_msg"
+			okLabel = "allowExternalContent_label"
+			okAction = () => {
+				this._setContentBlockingStatus(ContentBlockingStatus.Show)
+			}
+		} else if (status === ContentBlockingStatus.Show) {
+			message = "contentAllowed_msg"
+			okLabel = "alwaysAllowExternalContent_label"
+			okAction = () => {
+				this._setContentBlockingStatus(ContentBlockingStatus.AlwaysShow)
+			}
+		} else {
+			return null
+		}
+
+		return m(ButtonN, {
+			label: message,
+			icon: () => Icons.Picture,
+			colors,
+			click: () => {
+				if (this._mailBody) {
+					Dialog.confirm(message, okLabel).then(okAction)
+				}
+			}
+		})
+	}
+
+	_setContentBlockingStatus(status: ExternalContentBlockingStatusEnum): void {
+		// We can only be set to NoExternalContent when initially loading the mailbody (_loadMailBody)
+		if (status === ContentBlockingStatus.NoExternalContent
+			|| this._contentBlockingStatus === ContentBlockingStatus.NoExternalContent
+			|| this._contentBlockingStatus === status) {
+			return
+		}
+		const doBlock = status === ContentBlockingStatus.Block
+		this._htmlBody = urlify(stringifyFragment(htmlSanitizer.sanitizeFragment(this._getMailBody(), doBlock, isTutanotaTeamMail(this.mail)).html))
+		this._domBodyDeferred = defer()
+		this._replaceInlineImages()
+
+		if (status === ContentBlockingStatus.AlwaysShow) {
+			worker.addAllowedExternalSender(this.mail.sender.address)
+		} else if (this._contentBlockingStatus === ContentBlockingStatus.AlwaysShow) {
+			// if we're going from allow to something else it means we're revoking the whitelisting of the given sender
+			worker.removeAllowedExternalSender(this.mail.sender.address)
+		}
+		this._contentBlockingStatus = status
 	}
 }

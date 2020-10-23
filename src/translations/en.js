@@ -1197,6 +1197,12 @@ module.exports = {
 		"yourMessage_label": "Your message",
 		"you_label": "You",
 		"invalidRegexSyntax_msg": "Invalid regex syntax",
-		"requestTooLarge_msg": "Your request was too large for the server"
+		"requestTooLarge_msg": "Your request was too large for the server",
+		"contentAllowed_msg": "External images are being shown. Do you want to always trust external images from this sender?",
+		"allowExternalContent_label": "Show",
+		"blockExternalContent_label": "Block",
+		"alwaysAllowExternalContent_label": "Trust sender",
+		"disallowExternalContent_label": "Block external content",
+		"ignore_label": "Ignore"
 	}
 }
